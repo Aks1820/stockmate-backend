@@ -3,6 +3,7 @@ import { model, Schema } from "mongoose";
 export interface Product {
   name: string;
   sku: string;
+  barcode: string;
   category: string;
   price: number;
   stock: number;
@@ -18,6 +19,11 @@ const productSchema = new Schema<Product>(
     sku: { type: String, required: true, trim: true },
     category: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0 },
+    barcode: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     stock: { type: Number, required: true, min: 0, default: 0 },
     lowStockThreshold: { type: Number, required: true, min: 0, default: 5 },
     userId: { type: String, required: true, index: true },

@@ -1,5 +1,5 @@
-import cors from "cors";
 import { clerkMiddleware } from "@clerk/express";
+import cors from "cors";
 import express from "express";
 import productRoutes from "./routes/productRoutes.js";
 import saleRoutes from "./routes/saleRoutes.js";

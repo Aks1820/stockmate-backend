@@ -16,7 +16,9 @@ if (!clerkSecretKey?.match(/^sk_(test|live)_/) || !clerkPublishableKey?.match(/^
 const startServer = async () => {
   await connectDB();
 
-  app.listen(PORT);
+  app.listen(PORT, () => {
+    console.log(`StockMate API running on port ${PORT}`);
+  });
 };
 
 startServer();
