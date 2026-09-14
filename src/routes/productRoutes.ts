@@ -92,6 +92,9 @@ productRoutes.delete("/:id", async (req, res) => {
 });
 
 productRoutes.get("/barcode/:barcode", async (req, res) => {
+  console.log("LOOKING FOR BARCODE:", req.params.barcode);
+  console.log("USER:", res.locals.userId);
+  
   try {
     const product = await Product.findOne({
       barcode: req.params.barcode,
