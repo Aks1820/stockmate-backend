@@ -2,6 +2,7 @@ import { Router, type Response } from "express";
 import { isValidObjectId } from "mongoose";
 import { requireUser } from "../middleware/auth.js";
 import Product from "../models/Product.js";
+import StockMovement from "../models/StockMovement.js";
 
 const productRoutes = Router();
 productRoutes.use(requireUser);
@@ -33,9 +34,59 @@ productRoutes.post("/", async (req, res) => {
       ...payload,
       userId: res.locals.userId,
     });
+
+    if (product.stock > 0) {
+      await StockMovement.create({
+        productId: product._id,
+        userId: res.locals.userId,
+        type: "initial",
+        quantity: product.stock,
+        previousStock: 0,
+        newStock: product.stock,
+        reason: "Initial stock",
+      });
+    }
+
     res.status(201).json(product);
   } catch (error) {
     sendProductError(res, error, "create");
+  }
+});
+
+
+productRoutes.get("/:id/movements", async (req, res) => {
+  if (!isValidObjectId(req.params.id)) {
+    res.status(404).json({
+      message: "Product not found",
+    });
+    return;
+  }
+
+  try {
+    const product = await Product.findOne({
+      _id: req.params.id,
+      userId: res.locals.userId,
+    });
+
+    if (!product) {
+      res.status(404).json({
+        message: "Product not found",
+      });
+      return;
+    }
+
+    const movements = await StockMovement.find({
+      productId: product._id,
+      userId: res.locals.userId,
+    }).sort({
+      createdAt: -1,
+    });
+
+    res.json(movements);
+  } catch {
+    res.status(500).json({
+      message: "Failed to fetch stock history",
+    });
   }
 });
 
@@ -74,21 +125,47 @@ productRoutes.put("/:id", async (req, res) => {
   delete updates.userId;
 
   if (!isValidProductUpdate(updates)) {
-    res.status(400).json({ message: "Invalid product update payload" });
+    res.status(400).json({
+      message: "Invalid product update payload",
+    });
     return;
   }
 
   try {
-    const product = await Product.findOneAndUpdate(
-      { _id: req.params.id, userId: res.locals.userId },
-      { $set: updates },
-      { new: true, runValidators: true },
-    );
+    const product = await Product.findOne({
+      _id: req.params.id,
+      userId: res.locals.userId,
+    });
 
     if (!product) {
-      res.status(404).json({ message: "Product not found" });
+      res.status(404).json({
+        message: "Product not found",
+      });
       return;
     }
+
+    const previousStock = product.stock;
+
+    Object.assign(product, updates);
+
+    await product.save();
+
+    if (typeof updates.stock === "number") {
+      const newStock = product.stock;
+
+      if (newStock !== previousStock) {
+        await StockMovement.create({
+          productId: product._id,
+          userId: res.locals.userId,
+          type: "adjustment",
+          quantity: newStock - previousStock,
+          previousStock,
+          newStock,
+          reason: "Manual stock adjustment",
+        });
+      }
+    }
+
     res.json(product);
   } catch (error) {
     sendProductError(res, error, "update");

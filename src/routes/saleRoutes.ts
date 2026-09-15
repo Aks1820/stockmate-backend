@@ -3,6 +3,7 @@ import { isValidObjectId } from "mongoose";
 import { requireUser } from "../middleware/auth.js";
 import Product from "../models/Product.js";
 import Sale from "../models/Sale.js";
+import StockMovement from "../models/StockMovement.js";
 
 const saleRoutes = Router();
 saleRoutes.use(requireUser);
@@ -46,6 +47,16 @@ saleRoutes.post("/", async (req, res) => {
       unitPrice: product.price,
       total: product.price * quantity,
     });
+
+    await StockMovement.create({
+  productId: product._id,
+  userId,
+  type: "sale",
+  quantity: -quantity,
+  previousStock: product.stock,
+  newStock: product.stock - quantity,
+  reason: "Customer sale",
+});
 
     res.status(201).json(sale);
   } catch (error) {
