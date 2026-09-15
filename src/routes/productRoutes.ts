@@ -39,6 +39,31 @@ productRoutes.post("/", async (req, res) => {
   }
 });
 
+productRoutes.get("/:id", async (req, res) => {
+  if (!isValidObjectId(req.params.id)) {
+    res.status(404).json({ message: "Product not found" });
+    return;
+  }
+
+  try {
+    const product = await Product.findOne({
+      _id: req.params.id,
+      userId: res.locals.userId,
+    });
+
+    if (!product) {
+      res.status(404).json({ message: "Product not found" });
+      return;
+    }
+
+    res.json(product);
+  } catch {
+    res.status(500).json({ message: "Failed to fetch product" });
+  }
+});
+
+
+
 productRoutes.put("/:id", async (req, res) => {
   if (!isValidObjectId(req.params.id)) {
     res.status(404).json({ message: "Product not found" });
