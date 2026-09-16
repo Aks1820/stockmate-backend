@@ -402,6 +402,7 @@ const isValidProductPayload = (
   costPrice: number;
   stock: number;
   lowStockThreshold: number;
+  photoUrl?: string;
 } => {
   if (typeof payload !== "object" || payload === null) return false;
 
@@ -414,6 +415,7 @@ const isValidProductPayload = (
     costPrice,
     stock,
     lowStockThreshold,
+    photoUrl,
   } = payload as Record<string, unknown>;
 
   return (
@@ -433,6 +435,7 @@ const isValidProductPayload = (
     typeof stock === "number" &&
     Number.isFinite(stock) &&
     stock >= 0 &&
+    (photoUrl === undefined || typeof photoUrl === "string") &&
     typeof lowStockThreshold === "number" &&
     Number.isFinite(lowStockThreshold) &&
     lowStockThreshold >= 0
@@ -450,6 +453,7 @@ const isValidProductUpdate = (
   costPrice: number;
   stock: number;
   lowStockThreshold: number;
+  photoUrl: string;
 }> => {
   if (typeof payload !== "object" || payload === null) return false;
 
@@ -474,6 +478,9 @@ const isValidProductUpdate = (
       (typeof value !== "string" || value.trim().length === 0)
     )
       return false;
+    if (key === "photoUrl" && typeof value !== "string") {
+      return false;
+    }
     if (
       (key === "price" ||
         key === "costPrice" ||

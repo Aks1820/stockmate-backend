@@ -9,6 +9,7 @@ export interface Product {
   costPrice: number;
   stock: number;
   lowStockThreshold: number;
+  photoUrl: string;
   userId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -33,6 +34,11 @@ const productSchema = new Schema<Product>(
     },
     stock: { type: Number, required: true, min: 0, default: 0 },
     lowStockThreshold: { type: Number, required: true, min: 0, default: 5 },
+    photoUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     userId: { type: String, required: true, index: true },
   },
   { timestamps: true },
