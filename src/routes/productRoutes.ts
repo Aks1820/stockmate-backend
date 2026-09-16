@@ -55,6 +55,39 @@ productRoutes.post("/", async (req, res) => {
   }
 });
 
+productRoutes.get("/reorder", async (_req, res) => {
+  try {
+    const products = await Product.find({
+      userId: res.locals.userId,
+      $expr: {
+        $lte: ["$stock", "$lowStockThreshold"],
+      },
+    }).sort({
+      stock: 1,
+      name: 1,
+    });
+
+    const reorderList = products.map((product) => ({
+      _id: product._id,
+      name: product.name,
+      sku: product.sku,
+      category: product.category,
+      stock: product.stock,
+      lowStockThreshold: product.lowStockThreshold,
+      suggestedReorder: Math.max(
+        1,
+        product.lowStockThreshold * 2 - product.stock,
+      ),
+    }));
+
+    res.json(reorderList);
+  } catch {
+    res.status(500).json({
+      message: "Failed to fetch reorder list",
+    });
+  }
+});
+
 productRoutes.get("/:id/movements", async (req, res) => {
   if (!isValidObjectId(req.params.id)) {
     res.status(404).json({
@@ -97,12 +130,7 @@ productRoutes.post("/:id/stock", async (req, res) => {
     return;
   }
 
-  const {
-    action,
-    quantity,
-    type,
-    reason,
-  } = req.body as {
+  const { action, quantity, type, reason } = req.body as {
     action?: unknown;
     quantity?: unknown;
     type?: unknown;
@@ -122,22 +150,14 @@ productRoutes.post("/:id/stock", async (req, res) => {
     return;
   }
 
-  const allowedTypes = [
-    "purchase",
-    "adjustment",
-    "damage",
-    "return",
-  ] as const;
+  const allowedTypes = ["purchase", "adjustment", "damage", "return"] as const;
 
   if (
     typeof type !== "string" ||
-    !allowedTypes.includes(
-      type as (typeof allowedTypes)[number],
-    )
+    !allowedTypes.includes(type as (typeof allowedTypes)[number])
   ) {
     res.status(400).json({
-      message:
-        "type must be purchase, adjustment, damage, or return",
+      message: "type must be purchase, adjustment, damage, or return",
     });
     return;
   }
@@ -160,9 +180,7 @@ productRoutes.post("/:id/stock", async (req, res) => {
     const previousStock = product.stock;
 
     const newStock =
-      action === "add"
-        ? previousStock + quantity
-        : previousStock - quantity;
+      action === "add" ? previousStock + quantity : previousStock - quantity;
 
     if (newStock < 0) {
       res.status(409).json({
@@ -176,20 +194,20 @@ productRoutes.post("/:id/stock", async (req, res) => {
     await product.save();
 
     const movementType = type as StockMovementType;
-    
-    const movementData = {
-  productId: product._id,
-  userId,
-  type: movementType,
-  quantity: action === "add" ? quantity : -quantity,
-  previousStock,
-  newStock,
-  ...(typeof reason === "string" && reason.trim()
-    ? { reason: reason.trim() }
-    : {}),
-};
 
-await StockMovement.create(movementData);
+    const movementData = {
+      productId: product._id,
+      userId,
+      type: movementType,
+      quantity: action === "add" ? quantity : -quantity,
+      previousStock,
+      newStock,
+      ...(typeof reason === "string" && reason.trim()
+        ? { reason: reason.trim() }
+        : {}),
+    };
+
+    await StockMovement.create(movementData);
 
     res.json(product);
   } catch {
