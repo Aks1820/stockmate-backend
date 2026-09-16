@@ -399,13 +399,22 @@ const isValidProductPayload = (
   barcode?: string;
   category: string;
   price: number;
+  costPrice: number;
   stock: number;
   lowStockThreshold: number;
 } => {
   if (typeof payload !== "object" || payload === null) return false;
 
-  const { name, sku, barcode, category, price, stock, lowStockThreshold } =
-    payload as Record<string, unknown>;
+  const {
+    name,
+    sku,
+    barcode,
+    category,
+    price,
+    costPrice,
+    stock,
+    lowStockThreshold,
+  } = payload as Record<string, unknown>;
 
   return (
     typeof name === "string" &&
@@ -418,6 +427,9 @@ const isValidProductPayload = (
     typeof price === "number" &&
     Number.isFinite(price) &&
     price >= 0 &&
+    typeof costPrice === "number" &&
+    Number.isFinite(costPrice) &&
+    costPrice >= 0 &&
     typeof stock === "number" &&
     Number.isFinite(stock) &&
     stock >= 0 &&
@@ -435,6 +447,7 @@ const isValidProductUpdate = (
   barcode: string;
   category: string;
   price: number;
+  costPrice: number;
   stock: number;
   lowStockThreshold: number;
 }> => {
@@ -462,7 +475,10 @@ const isValidProductUpdate = (
     )
       return false;
     if (
-      (key === "price" || key === "stock" || key === "lowStockThreshold") &&
+      (key === "price" ||
+        key === "costPrice" ||
+        key === "stock" ||
+        key === "lowStockThreshold") &&
       (typeof value !== "number" || !Number.isFinite(value) || value < 0)
     )
       return false;

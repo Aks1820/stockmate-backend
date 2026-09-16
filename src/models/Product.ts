@@ -6,6 +6,7 @@ export interface Product {
   barcode: string;
   category: string;
   price: number;
+  costPrice: number;
   stock: number;
   lowStockThreshold: number;
   userId: string;
@@ -19,6 +20,12 @@ const productSchema = new Schema<Product>(
     sku: { type: String, required: true, trim: true },
     category: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0 },
+    costPrice: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
     barcode: {
       type: String,
       default: "",
