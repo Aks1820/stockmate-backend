@@ -14,8 +14,16 @@ saleRoutes.post("/", async (req, res) => {
     quantity?: unknown;
   };
 
-  if (typeof productId !== "string" || !isValidObjectId(productId) || !isPositiveInteger(quantity)) {
-    res.status(400).json({ message: "productId and a positive integer quantity are required" });
+  if (
+    typeof productId !== "string" ||
+    !isValidObjectId(productId) ||
+    !isPositiveInteger(quantity)
+  ) {
+    res
+      .status(400)
+      .json({
+        message: "productId and a positive integer quantity are required",
+      });
     return;
   }
 
@@ -49,20 +57,23 @@ saleRoutes.post("/", async (req, res) => {
     });
 
     await StockMovement.create({
-  productId: product._id,
-  userId,
-  type: "sale",
-  quantity: -quantity,
-  previousStock: product.stock,
-  newStock: product.stock - quantity,
-  reason: "Customer sale",
-});
+      productId: product._id,
+      userId,
+      type: "sale",
+      quantity: -quantity,
+      previousStock: product.stock,
+      newStock: product.stock - quantity,
+      reason: "Customer sale",
+    });
 
     res.status(201).json(sale);
   } catch (error) {
     const product = await Product.findOne({ _id: productId, userId });
     if (product && product.stock !== undefined) {
-      await Product.updateOne({ _id: product._id, userId }, { $inc: { stock: Number(quantity) } });
+      await Product.updateOne(
+        { _id: product._id, userId },
+        { $inc: { stock: Number(quantity) } },
+      );
     }
     res.status(500).json({ message: "Failed to create sale" });
   }
@@ -70,7 +81,9 @@ saleRoutes.post("/", async (req, res) => {
 
 saleRoutes.get("/", async (_req, res) => {
   try {
-    const sales = await Sale.find({ userId: res.locals.userId }).sort({ createdAt: -1 });
+    const sales = await Sale.find({ userId: res.locals.userId }).sort({
+      createdAt: -1,
+    });
     res.json(sales);
   } catch {
     res.status(500).json({ message: "Failed to fetch sales" });
@@ -84,7 +97,10 @@ saleRoutes.get("/:id", async (req, res) => {
   }
 
   try {
-    const sale = await Sale.findOne({ _id: req.params.id, userId: res.locals.userId });
+    const sale = await Sale.findOne({
+      _id: req.params.id,
+      userId: res.locals.userId,
+    });
     if (!sale) {
       res.status(404).json({ message: "Sale not found" });
       return;
@@ -103,7 +119,10 @@ saleRoutes.delete("/:id", async (req, res) => {
   }
 
   try {
-    const sale = await Sale.findOneAndDelete({ _id: req.params.id, userId: res.locals.userId });
+    const sale = await Sale.findOneAndDelete({
+      _id: req.params.id,
+      userId: res.locals.userId,
+    });
     if (!sale) {
       res.status(404).json({ message: "Sale not found" });
       return;

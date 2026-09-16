@@ -2,7 +2,9 @@ import { Router, type Response } from "express";
 import { isValidObjectId } from "mongoose";
 import { requireUser } from "../middleware/auth.js";
 import Product from "../models/Product.js";
-import StockMovement from "../models/StockMovement.js";
+import StockMovement, {
+  type StockMovementType,
+} from "../models/StockMovement.js";
 
 const productRoutes = Router();
 productRoutes.use(requireUser);
@@ -53,7 +55,6 @@ productRoutes.post("/", async (req, res) => {
   }
 });
 
-
 productRoutes.get("/:id/movements", async (req, res) => {
   if (!isValidObjectId(req.params.id)) {
     res.status(404).json({
@@ -90,6 +91,114 @@ productRoutes.get("/:id/movements", async (req, res) => {
   }
 });
 
+productRoutes.post("/:id/stock", async (req, res) => {
+  if (!isValidObjectId(req.params.id)) {
+    res.status(404).json({ message: "Product not found" });
+    return;
+  }
+
+  const {
+    action,
+    quantity,
+    type,
+    reason,
+  } = req.body as {
+    action?: unknown;
+    quantity?: unknown;
+    type?: unknown;
+    reason?: unknown;
+  };
+
+  if (
+    (action !== "add" && action !== "remove") ||
+    typeof quantity !== "number" ||
+    !Number.isInteger(quantity) ||
+    quantity <= 0
+  ) {
+    res.status(400).json({
+      message:
+        "action must be add or remove and quantity must be a positive integer",
+    });
+    return;
+  }
+
+  const allowedTypes = [
+    "purchase",
+    "adjustment",
+    "damage",
+    "return",
+  ] as const;
+
+  if (
+    typeof type !== "string" ||
+    !allowedTypes.includes(
+      type as (typeof allowedTypes)[number],
+    )
+  ) {
+    res.status(400).json({
+      message:
+        "type must be purchase, adjustment, damage, or return",
+    });
+    return;
+  }
+
+  try {
+    const userId = res.locals.userId as string;
+
+    const product = await Product.findOne({
+      _id: req.params.id,
+      userId,
+    });
+
+    if (!product) {
+      res.status(404).json({
+        message: "Product not found",
+      });
+      return;
+    }
+
+    const previousStock = product.stock;
+
+    const newStock =
+      action === "add"
+        ? previousStock + quantity
+        : previousStock - quantity;
+
+    if (newStock < 0) {
+      res.status(409).json({
+        message: "Insufficient stock",
+      });
+      return;
+    }
+
+    product.stock = newStock;
+
+    await product.save();
+
+    const movementType = type as StockMovementType;
+    
+    const movementData = {
+  productId: product._id,
+  userId,
+  type: movementType,
+  quantity: action === "add" ? quantity : -quantity,
+  previousStock,
+  newStock,
+  ...(typeof reason === "string" && reason.trim()
+    ? { reason: reason.trim() }
+    : {}),
+};
+
+await StockMovement.create(movementData);
+
+    res.json(product);
+  } catch {
+    res.status(500).json({
+      message: "Failed to update stock",
+    });
+  }
+});
+
 productRoutes.get("/:id", async (req, res) => {
   if (!isValidObjectId(req.params.id)) {
     res.status(404).json({ message: "Product not found" });
@@ -112,8 +221,6 @@ productRoutes.get("/:id", async (req, res) => {
     res.status(500).json({ message: "Failed to fetch product" });
   }
 });
-
-
 
 productRoutes.put("/:id", async (req, res) => {
   if (!isValidObjectId(req.params.id)) {
@@ -196,7 +303,7 @@ productRoutes.delete("/:id", async (req, res) => {
 productRoutes.get("/barcode/:barcode", async (req, res) => {
   console.log("LOOKING FOR BARCODE:", req.params.barcode);
   console.log("USER:", res.locals.userId);
-  
+
   try {
     const product = await Product.findOne({
       barcode: req.params.barcode,
